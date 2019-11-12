@@ -1,18 +1,28 @@
-FROM node:9
+# --------------------------
+# Build stage
+# --------------------------
+FROM node:10 as builder
 
-# Create app directory
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
-# set default node environment
-ENV NODE_ENV development
+USER node
 
-COPY . /usr/src/app
+ADD --chown=node ./package*.json /app/
+WORKDIR /app
 
-# Install app dependencies
-RUN npm install
+RUN npm ci --production
+
+COPY --chown=node . /app
+
+# --------------------------
+# Copy to target image
+# --------------------------
+FROM node:10-alpine
+
+USER node
 
 EXPOSE 5000
 
-RUN npm install -g forever
+COPY --from=builder --chown=node /app /app
 
-CMD forever -c "npm start" ./
+WORKDIR /app
+
+CMD ["node", "/app/src/server/index.js"]
